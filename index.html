@@ -1,0 +1,213 @@
+<html>
+    <head>
+        <script src="./face-api.min.js"></script>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+        <script src="http://code.jquery.com/jquery-latest.min.js "></script>
+        <link rel="shortcut icon" href="favicon.ico" type="image/vnd.microsoft.ico"/>
+        <title>オンライン講習システム</title>
+    </head>
+    <body>
+        <div id="wrapper">
+            <div id="head">
+                <div id="face">
+                    <video id="video" onloadedmetadata="onPlay(this)"  muted autoplay width="160" height="120"></video>
+                    <canvas id="facecanvas" style="  position: absolute;  top: 0; left: 0;" width="160" height="120"></canvas>
+                </div>
+                <div id="main">
+                    <h2 class="alert alert-light" role="alert">Online Attendance System</h2>
+                    <p class="alert alert-info">オンライン講習システム</p>
+                    <p class="back"><a href="#system">システムについて</a></p>
+                    <p id="volume"></p>
+                </div>
+            </div> 
+            <div id="body">
+                <div id="youtube"></div><br>
+                <button class=btn id="play">受講開始</button>
+                <button class=btn id="pause">一時停止</button>
+                <button class=btn id="volup">音量アップ</button>
+                <button class=btn id="voldown">音量ダウン</button>
+                <p>
+                    <time id="playback_position">0:00</time>
+                    <input style="width: 90%;" type="range" id="progress" value="0" min="0" max="1" step="0.01">
+                    <time id="end_position">0:00</time>
+                </p>
+            </div> 
+            <div id="explain">
+                <h2 id="system">システムについて</h2>
+                <p>パソコンに搭載されているカメラが、受講者の顔認識が有効な場合、再生ボタンを押して、受講動画を再生することができます。<br>
+                    再生が途切れた場合、再度カメラ前で顔認証を有効に再生ボタンを押して、受講動画を再開することができます。
+                </p>
+
+            </div>
+            
+        </div>
+        
+        <style>
+            #face{
+                float: left;
+
+            }
+
+            #main{
+                margin-left: 200;
+            }
+            #body{
+                width: 960px;
+            }
+
+            .btn{
+                background-color: #009cd3;
+                color: ffffff;
+                font-size: 20px;
+                font-family: 'Bitter', serif;
+                width: 185px;
+            }
+
+        </style>
+        
+        <script>
+            const playback_position = document.getElementById("playback_position");
+            const end_position = document.getElementById("end_position");
+            const slider_progress = document.getElementById("progress");
+
+            //var percent;
+
+            ///// YOUTUBE /////////
+            // IFrame Player API の読み込み
+            var tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+            var ytPlayer;
+            function onYouTubeIframeAPIReady() {
+                ytPlayer = new YT.Player('youtube', {
+                height: '540',
+                width: '960',
+                videoId: 'qESbeO30mX0', //動画ID
+                
+                // パラメータの設定
+                playerVars: {
+                    playsinline: 1,
+                    autoplay: 1, // 自動再生
+                    //loop: 1, // ループ有効
+                    //listType: 'playlist', //リスト再生（ループ再生に必要）
+                    //playlist: movieId, // 再生する動画リスト（ループ再生に必要）
+                    controls: 0, // コントロールバー非表示
+                    enablejsapi: 1, //JavaScript API 有効
+                    modestbranding:1,//yutubeロゴの非表示
+                    iv_load_policy: 3, //動画アノテーションを表示しない
+                    disablekb: 1, //キーボード操作OFF
+                    showinfo: 0, //動画の再生が始まる前に動画のタイトルなどの情報を表示しない
+                    rel:1, //再生終了時に関連動画を表示しない
+                },
+                // イベントの設定
+                events: {
+                    'onStateChange': onPlayerStateChange
+                    }
+                });
+            }
+
+
+            var timer;
+            function onPlayerStateChange(event) {
+                if (event.data == YT.PlayerState.PLAYING) { // 再生中の場合
+                    timer = setInterval(repeat, 1000);   // 再生時間の監視開始
+                } else{
+                    clearInterval(timer); // 再生時間の監視停止
+                    timer = null;
+                }
+            }
+
+            function timeConvert(time_position) {
+                if( 60 <= time_position) {
+                    res = Math.floor(time_position / 60);
+                    res += ":" + Math.floor(time_position % 60).toString().padStart( 2, '0');
+                } else {
+                    res = "0:" + Math.floor(time_position % 60).toString().padStart( 2, '0');
+                }
+                return res;
+            }
+
+            function repeat() {
+                console.log("tststststst");
+                const percent = (ytPlayer.getCurrentTime() / ytPlayer.getDuration());
+                console.log(percent);
+                console.log(ytPlayer.getCurrentTime());
+                console.log(ytPlayer.getDuration());
+
+                // 再生時間の表記を「mm:ss」に整える
+                var res = null;
+                const time_position = ytPlayer.getCurrentTime();
+                const time_end = ytPlayer.getDuration();
+
+                slider_progress.value = percent;
+                playback_position.textContent = timeConvert(time_position);
+                end_position.textContent = timeConvert(time_end);
+
+            }
+
+            $(function () {
+                // 再生
+                $('#play').click(function () {
+                    ytPlayer.playVideo();
+                });
+                // 一時停止
+                $('#pause').click(function () {
+                    ytPlayer.pauseVideo();
+                });
+                // 音量アップ(+10)
+                $('#volup').click(function () {
+                    // 現在の音量取得
+                    var currentVol = ytPlayer.getVolume();
+                    // 音量の変更
+                    ytPlayer.setVolume(currentVol + 10);
+                });
+                // 音量ダウン(-10)
+                $('#voldown').click(function () {
+                    // 現在の音量取得
+                    var currentVol = ytPlayer.getVolume();
+                    // 音量の変更
+                    ytPlayer.setVolume(currentVol - 10);
+                });
+            });
+
+            ////// Face Detect
+            const canvas = document.getElementById( 'facecanvas' );
+            const videoEl = document.getElementById( 'video' );
+            const inputSize = 224;
+            const scoreThreshold = 0.3;
+            const options = new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold });
+            async function onPlay()
+            {
+                if(videoEl.paused || videoEl.ended || !faceapi.nets.tinyFaceDetector.params)
+                    return setTimeout(() => onPlay())
+            
+                const result = await faceapi.detectSingleFace(videoEl, options).withFaceLandmarks()
+                if (result) {
+                    const dims = faceapi.matchDimensions(canvas, videoEl, true)
+                    const resizedResult = faceapi.resizeResults(result, { width: 160, height: 120 })
+                    faceapi.draw.drawDetections(canvas, resizedResult)
+                    //.draw.drawFaceLandmarks(canvas, resizedResult)
+                }
+                else
+                {
+                    ytPlayer.pauseVideo();
+                }
+                setTimeout(() => onPlay())
+            };
+                
+                async function run(){
+                    await faceapi.nets.tinyFaceDetector.load('/')
+                    await faceapi.loadFaceLandmarkModel('/')
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} })
+                videoEl.srcObject = stream;
+                }
+
+                $(document).ready(function() {
+                    run();
+                });
+
+        </script>
+    </body>
+</html>
